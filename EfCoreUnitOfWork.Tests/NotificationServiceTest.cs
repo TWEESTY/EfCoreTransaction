@@ -61,24 +61,24 @@ public class NotificationServiceTest : IDisposable
     [Fact]
     public async Task AddAsync_NoError_ReturnsSuccessAndNotificationSaved()
     {
-        string expectedTest = "bon text";
+        string expectedText = "bon text";
 
         _mockFakeService.Setup(x => x.DoWorkAsync()).Returns(Task.CompletedTask);
 
-        Result<NotificationEntity> result = await _notificationService.AddAsync(text: expectedTest);
+        Result<NotificationEntity> result = await _notificationService.AddAsync(text: expectedText);
         Assert.True(result.IsSuccess);
-        Assert.Equal(expectedTest, result.Value.Text);
+        Assert.Equal(expectedText, result.Value.Text);
         Assert.Equal(1, _dbContext.Notifications.Count());
     }
 
     [Fact]
     public async Task AddAsync_WithErrorInsideFakeService_ReturnsErrorAndNotificationNotSaved()
     {
-        string expectedTest = "bon text";
+        string expectedText = "bon text";
 
         _mockFakeService.Setup(x => x.DoWorkAsync()).Throws<InvalidOperationException>();
 
-        Result<NotificationEntity> result = await _notificationService.AddAsync(text: expectedTest);
+        Result<NotificationEntity> result = await _notificationService.AddAsync(text: expectedText);
         Assert.True(result.IsError());
         Assert.Equal(0, _dbContext.Notifications.Count());
     }

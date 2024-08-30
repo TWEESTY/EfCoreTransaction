@@ -6,8 +6,8 @@ namespace EfCoreUnitOfWork.Services
 {
     public class NotificationService : INotificationService
     {
-        private IRepository<NotificationEntity> _notificationRepository;
-        private IFakeService _fakeService;
+        private readonly IRepository<NotificationEntity> _notificationRepository;
+        private readonly IFakeService _fakeService;
 
         public NotificationService(IRepository<NotificationEntity> notificationRepository, IFakeService fakeService)
         {

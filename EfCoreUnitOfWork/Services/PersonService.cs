@@ -6,18 +6,41 @@ namespace EfCoreUnitOfWork.Services
 {
     public class PersonService : IPersonService
     {
-        private IRepository<PersonEntity> _personRepository;
+        private readonly IRepository<PersonEntity> _personRepository;
+        private readonly INotificationService _notificationService;
+        private readonly IFakeService _fakeService;
 
-        public PersonService(IRepository<PersonEntity> personRepository)
+        public PersonService(IRepository<PersonEntity> personRepository, INotificationService notificationService, IFakeService fakeService)
         {
             _personRepository = personRepository;
+            _notificationService = notificationService;
+            _fakeService = fakeService;
         }
 
 
         public async Task<Result<PersonEntity>> AddAsync(string name, CancellationToken cancellationToken = default)
         {
-            PersonEntity personEntity = _personRepository.Add(new PersonEntity { Name = name });
-            await _personRepository.SaveChangesAsync();
+            PersonEntity personEntity;
+
+            try
+            {
+                personEntity = _personRepository.Add(new PersonEntity { Name = name });
+                Result<NotificationEntity> notificationResult = await _notificationService.AddAsync("une notification", cancellationToken);
+                
+                if (notificationResult.IsError())
+                {
+                    return Result.Error("erreur");
+                }
+
+                await _fakeService.DoWorkAsync();
+
+                await _personRepository.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                return Result.Error(ex.Message);
+            }
+
             return Result<PersonEntity>.Success(personEntity);
         }
 
