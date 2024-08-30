@@ -24,6 +24,7 @@ namespace EfCoreUnitOfWork.Services
 
             try
             {
+
                 personEntity = _personRepository.Add(new PersonEntity { Name = name });
                 Result<NotificationEntity> notificationResult = await _notificationService.AddAsync("une notification", cancellationToken);
                 

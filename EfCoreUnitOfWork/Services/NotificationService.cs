@@ -22,7 +22,6 @@ namespace EfCoreUnitOfWork.Services
             try
             {
                 notificationEntity = _notificationRepository.Add(new NotificationEntity { Text = text });
-                // await _notificationRepository.SaveChangesAsync(cancellationToken);
                 await _fakeService.DoWorkAsync();
                 await _notificationRepository.SaveChangesAsync(cancellationToken);
             }
