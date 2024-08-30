@@ -19,7 +19,7 @@ namespace EfCoreUnitOfWork.Repositories
 
         public IUnitOfWork StartOneUnitOfWork()
         {
-            return new EfUnitOfWork(_dbContext, isParent: _numberOfUnitOfWork++ == 0);
+            return new EfUnitOfWork(this, _dbContext, isParent: _numberOfUnitOfWork++ == 0);
         }
     }
 }

@@ -31,6 +31,7 @@ namespace EfCoreUnitOfWork.Repositories
                 if (_isParent && _currentTransaction != null)
                 {
                     _currentTransaction.Rollback();
+                    _dbContext.ChangeTracker.Clear();
                 }
             }
             finally

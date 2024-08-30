@@ -1,6 +1,7 @@
 ﻿using Ardalis.Result;
 using EfCoreUnitOfWork.Entities;
 using EfCoreUnitOfWork.Repositories;
+using System.Xml.Linq;
 
 namespace EfCoreUnitOfWork.Services
 {
@@ -8,14 +9,20 @@ namespace EfCoreUnitOfWork.Services
     {
         private readonly IRepository<PersonEntity> _personRepository;
         private readonly INotificationService _notificationService;
-        private readonly IFakeService _fakeService;
+        private readonly IFakeService _fakeService1;
+        private readonly IFakeService _fakeService2;
+        private readonly IFakeService _fakeService3;
+        private readonly IFakeService _fakeService4;
         private readonly IUnitOfWorkManager _unitOfWorkManager;
 
-        public PersonService(IRepository<PersonEntity> personRepository, INotificationService notificationService, IFakeService fakeService, IUnitOfWorkManager unitOfWorkManager)
+        public PersonService(IRepository<PersonEntity> personRepository, INotificationService notificationService, IFakeService fakeService, IFakeService fakeService2, IFakeService fakeService3, IFakeService fakeService4, IUnitOfWorkManager unitOfWorkManager)
         {
             _personRepository = personRepository;
             _notificationService = notificationService;
-            _fakeService = fakeService;
+            _fakeService1 = fakeService;
+            _fakeService2 = fakeService2;
+            _fakeService3 = fakeService3;
+            _fakeService4 = fakeService4;
             _unitOfWorkManager = unitOfWorkManager;
         }
 
@@ -36,7 +43,7 @@ namespace EfCoreUnitOfWork.Services
                         return Result.Error("erreur");
                     }
 
-                    await _fakeService.DoWorkAsync();
+                    await _fakeService1.DoWorkAsync();
 
                     await _personRepository.SaveChangesAsync();
                     await unitOfWork.EndAsync();
@@ -60,6 +67,130 @@ namespace EfCoreUnitOfWork.Services
             }
 
             return Result.Success(personEntity);
+        }
+
+        public async Task AddForNestedTesting(CancellationToken cancellationToken)
+        {
+            using(IUnitOfWork unitOfWork1 = _unitOfWorkManager.StartOneUnitOfWork())
+            {
+                _personRepository.Add(new PersonEntity { Name = "parent1" });
+
+                using (IUnitOfWork nestedUnitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
+                {
+                    _personRepository.Add(new PersonEntity { Name = "nestedChild11" });
+
+                    await _personRepository.SaveChangesAsync();
+
+                    await _fakeService1.DoWorkAsync();
+
+                    await nestedUnitOfWork.EndAsync();
+                }
+
+                using (IUnitOfWork nestedUnitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
+                {
+                    _personRepository.Add(new PersonEntity { Name = "nestedChild12" });
+
+                    await _personRepository.SaveChangesAsync();
+                    await nestedUnitOfWork.EndAsync();
+                }
+
+                await _personRepository.SaveChangesAsync();
+                await _fakeService2.DoWorkAsync();
+                await unitOfWork1.EndAsync();
+            }
+
+            using (IUnitOfWork unitOfWork1 = _unitOfWorkManager.StartOneUnitOfWork())
+            {
+                _personRepository.Add(new PersonEntity { Name = "parent2" });
+
+                using (IUnitOfWork nestedUnitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
+                {
+                    _personRepository.Add(new PersonEntity { Name = "nestedChild21" });
+
+                    await _personRepository.SaveChangesAsync();
+
+                    await _fakeService3.DoWorkAsync();
+
+                    await nestedUnitOfWork.EndAsync();
+                }
+
+                using (IUnitOfWork nestedUnitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
+                {
+                    _personRepository.Add(new PersonEntity { Name = "nestedChild22" });
+
+                    await _personRepository.SaveChangesAsync();
+                    await nestedUnitOfWork.EndAsync();
+                }
+
+                await _personRepository.SaveChangesAsync();
+                await _fakeService4.DoWorkAsync();
+                await unitOfWork1.EndAsync();
+            }
+        }
+
+        public async Task AddWithTryCatchForFirstUoWForNestedTesting(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using (IUnitOfWork unitOfWork1 = _unitOfWorkManager.StartOneUnitOfWork())
+                {
+                    _personRepository.Add(new PersonEntity { Name = "parent1" });
+
+                    using (IUnitOfWork nestedUnitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
+                    {
+                        _personRepository.Add(new PersonEntity { Name = "nestedChild11" });
+
+                        await _personRepository.SaveChangesAsync();
+
+                        await _fakeService1.DoWorkAsync();
+
+                        await nestedUnitOfWork.EndAsync();
+                    }
+
+                    using (IUnitOfWork nestedUnitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
+                    {
+                        _personRepository.Add(new PersonEntity { Name = "nestedChild12" });
+
+                        await _personRepository.SaveChangesAsync();
+                        await nestedUnitOfWork.EndAsync();
+                    }
+
+                    await _personRepository.SaveChangesAsync();
+                    await _fakeService2.DoWorkAsync();
+                    await unitOfWork1.EndAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+            }
+
+            using (IUnitOfWork unitOfWork1 = _unitOfWorkManager.StartOneUnitOfWork())
+            {
+                _personRepository.Add(new PersonEntity { Name = "parent2" });
+
+                using (IUnitOfWork nestedUnitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
+                {
+                    _personRepository.Add(new PersonEntity { Name = "nestedChild21" });
+
+                    await _personRepository.SaveChangesAsync();
+
+                    await _fakeService3.DoWorkAsync();
+
+                    await nestedUnitOfWork.EndAsync();
+                }
+
+                using (IUnitOfWork nestedUnitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
+                {
+                    _personRepository.Add(new PersonEntity { Name = "nestedChild22" });
+
+                    await _personRepository.SaveChangesAsync();
+                    await nestedUnitOfWork.EndAsync();
+                }
+
+                await _personRepository.SaveChangesAsync();
+                await _fakeService4.DoWorkAsync();
+                await unitOfWork1.EndAsync();
+            }
         }
     }
 }
