@@ -9,39 +9,48 @@ namespace EfCoreUnitOfWork.Services
         private readonly IRepository<PersonEntity> _personRepository;
         private readonly INotificationService _notificationService;
         private readonly IFakeService _fakeService;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public PersonService(IRepository<PersonEntity> personRepository, INotificationService notificationService, IFakeService fakeService)
+        public PersonService(IRepository<PersonEntity> personRepository, INotificationService notificationService, IFakeService fakeService, IUnitOfWork unitOfWork)
         {
             _personRepository = personRepository;
             _notificationService = notificationService;
             _fakeService = fakeService;
+            _unitOfWork = unitOfWork;
         }
 
 
         public async Task<Result<PersonEntity>> AddAsync(string name, CancellationToken cancellationToken = default)
         {
             PersonEntity personEntity;
+            Result<PersonEntity>? result = null;
 
             try
             {
-                personEntity = _personRepository.Add(new PersonEntity { Name = name });
-                Result<NotificationEntity> notificationResult = await _notificationService.AddAsync("une notification", cancellationToken);
-                
-                if (notificationResult.IsError())
+                await _unitOfWork.DoWorkAsync(async () =>
                 {
-                    return Result.Error("erreur");
-                }
+                    personEntity = _personRepository.Add(new PersonEntity { Name = name });
+                    Result<NotificationEntity> notificationResult = await _notificationService.AddAsync("une notification", cancellationToken);
 
-                await _fakeService.DoWorkAsync();
+                    if (notificationResult.IsError())
+                    {
+                        result = Result.Error("erreur");
+                        return;
+                    }
 
-                await _personRepository.SaveChangesAsync();
+                    await _fakeService.DoWorkAsync();
+
+                    await _personRepository.SaveChangesAsync();
+
+                    result = Result.Success(personEntity);
+                });
             }
             catch (Exception ex)
             {
-                return Result.Error(ex.Message);
+                return result = Result.Error(ex.Message);
             }
 
-            return Result<PersonEntity>.Success(personEntity);
+            return result!;
         }
 
         public async Task<Result<PersonEntity>> GetAsync(int id, CancellationToken cancellationToken = default)

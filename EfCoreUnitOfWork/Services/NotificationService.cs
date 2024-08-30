@@ -8,11 +8,13 @@ namespace EfCoreUnitOfWork.Services
     {
         private readonly IRepository<NotificationEntity> _notificationRepository;
         private readonly IFakeService _fakeService;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public NotificationService(IRepository<NotificationEntity> notificationRepository, IFakeService fakeService)
+        public NotificationService(IRepository<NotificationEntity> notificationRepository, IFakeService fakeService, IUnitOfWork unitOfWork)
         {
             _notificationRepository = notificationRepository;
             _fakeService = fakeService;
+            _unitOfWork = unitOfWork;
         }
 
 
@@ -21,10 +23,12 @@ namespace EfCoreUnitOfWork.Services
             NotificationEntity notificationEntity;
             try
             {
-                notificationEntity = _notificationRepository.Add(new NotificationEntity { Text = text });
-                // await _notificationRepository.SaveChangesAsync(cancellationToken);
-                await _fakeService.DoWorkAsync();
-                await _notificationRepository.SaveChangesAsync(cancellationToken);
+                notificationEntity = await _unitOfWork.DoWorkAsync(async () => {
+                    notificationEntity = _notificationRepository.Add(new NotificationEntity { Text = text });
+                    await _fakeService.DoWorkAsync();
+                    await _notificationRepository.SaveChangesAsync(cancellationToken);
+                    return notificationEntity;
+                });
             }
             catch (Exception ex)
             {

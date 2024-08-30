@@ -3,6 +3,7 @@ using EfCoreUnitOfWork.Context;
 using EfCoreUnitOfWork.Entities;
 using EfCoreUnitOfWork.Repositories;
 using EfCoreUnitOfWork.Services;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 
@@ -11,28 +12,35 @@ namespace EfCoreUnitOfWork.Tests;
 
 public class PersonServiceTest : IDisposable
 {
+    private const string InMemoryConnectionString = "DataSource=:memory:";
     private readonly AppDbContext _dbContext;
     private readonly INotificationService _notificationService;
     private readonly IPersonService _personService;
     private readonly Mock<IFakeService> _mockFakeServiceInstanceForNotificationService;
     private readonly Mock<IFakeService> _mockFakeServiceInstanceForPersonService;
+    private readonly SqliteConnection _connection;
 
 
     public PersonServiceTest()
     {
-        DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        _connection = new SqliteConnection(InMemoryConnectionString);
+        _connection.Open();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite(_connection)
+                .Options;
 
         _dbContext = new AppDbContext(options);
+        _dbContext.Database.EnsureCreated();
+
+        var unitOfWork = new EfUnitOfWork(_dbContext);
         var notificationsRepository = new EfRepository<NotificationEntity>(_dbContext);
         var personRepository = new EfRepository<PersonEntity>(_dbContext);
 
         _mockFakeServiceInstanceForNotificationService = new Mock<IFakeService>();
         _mockFakeServiceInstanceForPersonService = new Mock<IFakeService>();
 
-        _notificationService = new NotificationService(notificationsRepository, _mockFakeServiceInstanceForNotificationService.Object);
-        _personService = new PersonService(personRepository, _notificationService , _mockFakeServiceInstanceForPersonService.Object);
+        _notificationService = new NotificationService(notificationsRepository, _mockFakeServiceInstanceForNotificationService.Object, unitOfWork);
+        _personService = new PersonService(personRepository, _notificationService , _mockFakeServiceInstanceForPersonService.Object, unitOfWork);
     }
 
     [Fact]
@@ -111,7 +119,7 @@ public class PersonServiceTest : IDisposable
 
     public void Dispose()
     {
-        _dbContext.Database.EnsureDeleted();
         _dbContext.Dispose();
+        _connection.Close();
     }
 }
