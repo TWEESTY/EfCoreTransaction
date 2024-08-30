@@ -3,6 +3,7 @@ using EfCoreUnitOfWork.Context;
 using EfCoreUnitOfWork.Entities;
 using EfCoreUnitOfWork.Repositories;
 using EfCoreUnitOfWork.Services;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 
@@ -11,18 +12,24 @@ namespace EfCoreUnitOfWork.Tests;
 
 public class NotificationServiceTest : IDisposable
 {
+    private const string InMemoryConnectionString = "DataSource=:memory:";
     private readonly AppDbContext _dbContext;
     private readonly INotificationService _notificationService;
     private readonly Mock<IFakeService> _mockFakeService;
+    private readonly SqliteConnection _connection;
 
 
     public NotificationServiceTest()
     {
-        DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
+        _connection = new SqliteConnection(InMemoryConnectionString);
+        _connection.Open();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite(_connection)
+                .Options;
 
         _dbContext = new AppDbContext(options);
+        _dbContext.Database.EnsureCreated();
+
         var notificationsRepository = new EfRepository<NotificationEntity>(_dbContext);
         _mockFakeService = new Mock<IFakeService>();
         _notificationService = new NotificationService(notificationsRepository, _mockFakeService.Object);
@@ -85,7 +92,7 @@ public class NotificationServiceTest : IDisposable
 
     public void Dispose()
     {
-        _dbContext.Database.EnsureDeleted();
         _dbContext.Dispose();
+        _connection.Close();
     }
 }
