@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35125.118
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EfCoreUnitOfWork", "EfCoreUnitOfWork\EfCoreUnitOfWork.csproj", "{9870F0B0-D225-42DB-8DEB-2B08B4412DFA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EfCoreUnitOfWork.Tests", "EfCoreUnitOfWork.Tests\EfCoreUnitOfWork.Tests.csproj", "{856726F5-381A-4DF2-B8F6-8C569495E91D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9870F0B0-D225-42DB-8DEB-2B08B4412DFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9870F0B0-D225-42DB-8DEB-2B08B4412DFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9870F0B0-D225-42DB-8DEB-2B08B4412DFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9870F0B0-D225-42DB-8DEB-2B08B4412DFA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{856726F5-381A-4DF2-B8F6-8C569495E91D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{856726F5-381A-4DF2-B8F6-8C569495E91D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{856726F5-381A-4DF2-B8F6-8C569495E91D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{856726F5-381A-4DF2-B8F6-8C569495E91D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2912A718-6514-49E0-B414-6DE35E482DB2}
+	EndGlobalSection
+EndGlobal
