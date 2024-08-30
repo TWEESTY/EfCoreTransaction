@@ -1,11 +1,15 @@
 ﻿using Ardalis.Result;
+using Castle.Components.DictionaryAdapter.Xml;
 using EfCoreUnitOfWork.Context;
 using EfCoreUnitOfWork.Entities;
 using EfCoreUnitOfWork.Repositories;
 using EfCoreUnitOfWork.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Internal;
 using Moq;
+using System.Net.Sockets;
+using Zejji.Entity;
 
 namespace EfCoreUnitOfWork.Tests;
 
@@ -13,26 +17,33 @@ namespace EfCoreUnitOfWork.Tests;
 public class NotificationServiceTest : IDisposable
 {
     private const string InMemoryConnectionString = "DataSource=:memory:";
-    private readonly AppDbContext _dbContext;
     private readonly INotificationService _notificationService;
     private readonly Mock<IFakeService> _mockFakeService;
     private readonly SqliteConnection _connection;
-
+    private readonly DbContextScopeFactory _dbContextScopeFactory;
 
     public NotificationServiceTest()
     {
-        _connection = new SqliteConnection(InMemoryConnectionString);
-        _connection.Open();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseSqlite(_connection)
-                .Options;
+        var dbContextFactory = new RegisteredDbContextFactory();
+        _connection = new SqliteConnection("DataSource=:memory:");
 
-        _dbContext = new AppDbContext(options);
-        _dbContext.Database.EnsureCreated();
+        dbContextFactory.RegisterDbContextType<AppDbContext>(() =>
+        {
+            _connection.Open();
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                    .UseSqlite(_connection)
+                    .Options;
 
-        var notificationsRepository = new EfRepository<NotificationEntity>(_dbContext);
+            var context = new AppDbContext(options);
+            context.Database.EnsureCreated();
+            return context;
+        });
+
+        _dbContextScopeFactory =  new DbContextScopeFactory(dbContextFactory);
+
+        var notificationsRepository = new EfRepository<NotificationEntity>(new AmbientDbContextLocator());
         _mockFakeService = new Mock<IFakeService>();
-        _notificationService = new NotificationService(notificationsRepository, _mockFakeService.Object);
+        _notificationService = new NotificationService(notificationsRepository, _mockFakeService.Object, _dbContextScopeFactory);
 
     }
 
@@ -50,13 +61,15 @@ public class NotificationServiceTest : IDisposable
         string expectedText = "bon text";
         int expectedId = 2;
 
-        await _dbContext.AddRangeAsync(new[] {
-            new NotificationEntity { Id = 1, Text = "blabla" },
-            new NotificationEntity { Id = expectedId, Text = expectedText },
-        });
+        using (var dbContextScope = _dbContextScopeFactory.Create())
+        {
+            await dbContextScope.DbContexts.Get<AppDbContext>().Notifications.AddRangeAsync(new[] {
+                new NotificationEntity { Id = 1, Text = "blabla" },
+                new NotificationEntity { Id = expectedId, Text = expectedText },
+            });
 
-        await _dbContext.SaveChangesAsync();
-
+            await dbContextScope.SaveChangesAsync();
+        }
 
         Result<NotificationEntity> result = await _notificationService.GetAsync(id: expectedId);
 
@@ -73,9 +86,13 @@ public class NotificationServiceTest : IDisposable
         _mockFakeService.Setup(x => x.DoWorkAsync()).Returns(Task.CompletedTask);
 
         Result<NotificationEntity> result = await _notificationService.AddAsync(text: expectedText);
-        Assert.True(result.IsSuccess);
-        Assert.Equal(expectedText, result.Value.Text);
-        Assert.Equal(1, _dbContext.Notifications.Count());
+
+        using (var dbContextScope = _dbContextScopeFactory.CreateReadOnly())
+        {
+            Assert.True(result.IsSuccess);
+            Assert.Equal(expectedText, result.Value.Text);
+            Assert.Equal(1, dbContextScope.DbContexts.Get<AppDbContext>().Notifications.Count());
+        }
     }
 
     [Fact]
@@ -86,13 +103,16 @@ public class NotificationServiceTest : IDisposable
         _mockFakeService.Setup(x => x.DoWorkAsync()).Throws<InvalidOperationException>();
 
         Result<NotificationEntity> result = await _notificationService.AddAsync(text: expectedText);
-        Assert.True(result.IsError());
-        Assert.Equal(0, _dbContext.Notifications.Count());
+
+        using (var dbContextScope = _dbContextScopeFactory.CreateReadOnly())
+        {
+            Assert.True(result.IsError());
+            Assert.Equal(0, dbContextScope.DbContexts.Get<AppDbContext>().Notifications.Count());
+        }
     }
 
     public void Dispose()
     {
-        _dbContext.Dispose();
         _connection.Close();
     }
 }

@@ -6,6 +6,7 @@ using EfCoreUnitOfWork.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Moq;
+using Zejji.Entity;
 
 namespace EfCoreUnitOfWork.Tests;
 
@@ -13,33 +14,45 @@ namespace EfCoreUnitOfWork.Tests;
 public class PersonServiceTest : IDisposable
 {
     private const string InMemoryConnectionString = "DataSource=:memory:";
-    private readonly AppDbContext _dbContext;
     private readonly INotificationService _notificationService;
     private readonly IPersonService _personService;
     private readonly Mock<IFakeService> _mockFakeServiceInstanceForNotificationService;
     private readonly Mock<IFakeService> _mockFakeServiceInstanceForPersonService;
     private readonly SqliteConnection _connection;
+    private readonly DbContextScopeFactory _dbContextScopeFactory;
 
 
     public PersonServiceTest()
     {
-        _connection = new SqliteConnection(InMemoryConnectionString);
-        _connection.Open();
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseSqlite(_connection)
-                .Options;
+        
 
-        _dbContext = new AppDbContext(options);
-        _dbContext.Database.EnsureCreated();
+        var dbContextFactory = new RegisteredDbContextFactory();
+        _connection = new SqliteConnection("DataSource=:memory:");
 
-        var notificationsRepository = new EfRepository<NotificationEntity>(_dbContext);
-        var personRepository = new EfRepository<PersonEntity>(_dbContext);
+        dbContextFactory.RegisterDbContextType<AppDbContext>(() =>
+        {
+            _connection.Open();
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                    .UseSqlite(_connection)
+                    .Options;
+
+            var context = new AppDbContext(options);
+            context.Database.EnsureCreated();
+            return context;
+        });
+
+        _dbContextScopeFactory = new DbContextScopeFactory(dbContextFactory);
+        var ambienDbContextLocator = new AmbientDbContextLocator();
+
+
+        var notificationsRepository = new EfRepository<NotificationEntity>(ambienDbContextLocator);
+        var personRepository = new EfRepository<PersonEntity>(ambienDbContextLocator);
 
         _mockFakeServiceInstanceForNotificationService = new Mock<IFakeService>();
         _mockFakeServiceInstanceForPersonService = new Mock<IFakeService>();
 
-        _notificationService = new NotificationService(notificationsRepository, _mockFakeServiceInstanceForNotificationService.Object);
-        _personService = new PersonService(personRepository, _notificationService, _mockFakeServiceInstanceForPersonService.Object);
+        _notificationService = new NotificationService(notificationsRepository, _mockFakeServiceInstanceForNotificationService.Object, _dbContextScopeFactory);
+        _personService = new PersonService(personRepository, _notificationService, _mockFakeServiceInstanceForPersonService.Object, _dbContextScopeFactory);
     }
 
     [Fact]
@@ -56,12 +69,15 @@ public class PersonServiceTest : IDisposable
         string expectedName = "Henry";
         int expectedId = 2;
 
-        await _dbContext.AddRangeAsync(new[] {
-            new PersonEntity { Id = 1, Name = "Dupont" },
-            new PersonEntity { Id = expectedId, Name = expectedName },
-        });
+        using (var dbContextScope = _dbContextScopeFactory.Create())
+        {
+            await dbContextScope.DbContexts.Get<AppDbContext>().AddRangeAsync(new[] {
+                new PersonEntity { Id = 1, Name = "Dupont" },
+                new PersonEntity { Id = expectedId, Name = expectedName },
+            });
 
-        await _dbContext.SaveChangesAsync();
+            await dbContextScope.DbContexts.Get<AppDbContext>().SaveChangesAsync();
+        }
 
 
         Result<PersonEntity> result = await _personService.GetAsync(id: expectedId);
@@ -82,8 +98,12 @@ public class PersonServiceTest : IDisposable
         Result<PersonEntity> result = await _personService.AddAsync(name: expectedName);
         Assert.True(result.IsSuccess);
         Assert.Equal(expectedName, result.Value.Name);
-        Assert.Equal(1, _dbContext.Persons.Count());
-        Assert.Equal(1, _dbContext.Notifications.Count());
+
+        using (var dbContextScope = _dbContextScopeFactory.CreateReadOnly())
+        {
+            Assert.Equal(1, dbContextScope.DbContexts.Get<AppDbContext>().Persons.Count());
+            Assert.Equal(1, dbContextScope.DbContexts.Get<AppDbContext>().Notifications.Count());
+        }
 
     }
 
@@ -96,9 +116,13 @@ public class PersonServiceTest : IDisposable
         _mockFakeServiceInstanceForPersonService.Setup(x => x.DoWorkAsync()).Returns(Task.CompletedTask);
 
         Result<PersonEntity> result = await _personService.AddAsync(name: expectedName);
-        Assert.True(result.IsError());
-        Assert.Equal(0, _dbContext.Notifications.Count());
-        Assert.Equal(0, _dbContext.Persons.Count());
+
+        using (var dbContextScope = _dbContextScopeFactory.CreateReadOnly())
+        {
+            Assert.True(result.IsError());
+            Assert.Equal(0, dbContextScope.DbContexts.Get<AppDbContext>().Notifications.Count());
+            Assert.Equal(0, dbContextScope.DbContexts.Get<AppDbContext>().Persons.Count());
+        }
     }
 
     [Fact]
@@ -111,14 +135,17 @@ public class PersonServiceTest : IDisposable
 
 
         Result<PersonEntity> result = await _personService.AddAsync(name: expectedName);
-        Assert.True(result.IsError());
-        Assert.Equal(0, _dbContext.Notifications.Count());
-        Assert.Equal(0, _dbContext.Persons.Count());
+
+        using (var dbContextScope = _dbContextScopeFactory.CreateReadOnly())
+        {
+            Assert.True(result.IsError());
+            Assert.Equal(0, dbContextScope.DbContexts.Get<AppDbContext>().Notifications.Count());
+            Assert.Equal(0, dbContextScope.DbContexts.Get<AppDbContext>().Persons.Count());
+        }
     }
 
     public void Dispose()
     {
-        _dbContext.Dispose();
         _connection.Close();
     }
 }
