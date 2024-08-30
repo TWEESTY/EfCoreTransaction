@@ -39,7 +39,7 @@ namespace EfCoreUnitOfWork.Services
 
                     await _fakeService.DoWorkAsync();
 
-                    await _personRepository.SaveChangesAsync();
+                    await dbContextScope.SaveChangesAsync();
                 }
             }
             catch (Exception ex)
