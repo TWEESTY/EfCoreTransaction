@@ -53,6 +53,7 @@ namespace EfCoreUnitOfWork.Repositories
             {
                 // TODO logging
                 _currentTransaction?.Rollback();
+                _dbContext.ChangeTracker.Clear();
                 throw;
             }
             finally
