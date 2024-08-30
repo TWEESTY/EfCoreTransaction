@@ -6,8 +6,6 @@ namespace EfCoreUnitOfWork.Repositories
 {
     public interface IUnitOfWork : IDisposable
     {
-        public void Begin(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted);
-
         public Task EndAsync();
     }
 }

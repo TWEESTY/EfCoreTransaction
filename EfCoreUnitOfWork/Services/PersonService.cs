@@ -9,14 +9,14 @@ namespace EfCoreUnitOfWork.Services
         private readonly IRepository<PersonEntity> _personRepository;
         private readonly INotificationService _notificationService;
         private readonly IFakeService _fakeService;
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IUnitOfWorkManager _unitOfWorkManager;
 
-        public PersonService(IRepository<PersonEntity> personRepository, INotificationService notificationService, IFakeService fakeService, IUnitOfWork unitOfWork)
+        public PersonService(IRepository<PersonEntity> personRepository, INotificationService notificationService, IFakeService fakeService, IUnitOfWorkManager unitOfWorkManager)
         {
             _personRepository = personRepository;
             _notificationService = notificationService;
             _fakeService = fakeService;
-            _unitOfWork = unitOfWork;
+            _unitOfWorkManager = unitOfWorkManager;
         }
 
 
@@ -26,19 +26,21 @@ namespace EfCoreUnitOfWork.Services
 
             try
             {
-                _unitOfWork.Begin();
-                personEntity = _personRepository.Add(new PersonEntity { Name = name });
-                Result<NotificationEntity> notificationResult = await _notificationService.AddAsync("une notification", cancellationToken);
-                
-                if (notificationResult.IsError())
+                using (IUnitOfWork unitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
                 {
-                    return Result.Error("erreur");
+                    personEntity = _personRepository.Add(new PersonEntity { Name = name });
+                    Result<NotificationEntity> notificationResult = await _notificationService.AddAsync("une notification", cancellationToken);
+
+                    if (notificationResult.IsError())
+                    {
+                        return Result.Error("erreur");
+                    }
+
+                    await _fakeService.DoWorkAsync();
+
+                    await _personRepository.SaveChangesAsync();
+                    await unitOfWork.EndAsync();
                 }
-
-                await _fakeService.DoWorkAsync();
-
-                await _personRepository.SaveChangesAsync();
-                await _unitOfWork.EndAsync();
             }
             catch (Exception ex)
             {

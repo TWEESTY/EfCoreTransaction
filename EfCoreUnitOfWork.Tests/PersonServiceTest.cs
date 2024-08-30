@@ -34,13 +34,13 @@ public class PersonServiceTest : IDisposable
 
         var notificationsRepository = new EfRepository<NotificationEntity>(_dbContext);
         var personRepository = new EfRepository<PersonEntity>(_dbContext);
-        var unitOfWork = new EfUnitOfWork(_dbContext);
+        var unitOfWorkManager = new EfUnitOfWorkManager(_dbContext);
 
         _mockFakeServiceInstanceForNotificationService = new Mock<IFakeService>();
         _mockFakeServiceInstanceForPersonService = new Mock<IFakeService>();
 
-        _notificationService = new NotificationService(notificationsRepository, _mockFakeServiceInstanceForNotificationService.Object, unitOfWork);
-        _personService = new PersonService(personRepository, _notificationService, _mockFakeServiceInstanceForPersonService.Object, unitOfWork);
+        _notificationService = new NotificationService(notificationsRepository, _mockFakeServiceInstanceForNotificationService.Object, unitOfWorkManager);
+        _personService = new PersonService(personRepository, _notificationService, _mockFakeServiceInstanceForPersonService.Object, unitOfWorkManager);
     }
 
     [Fact]

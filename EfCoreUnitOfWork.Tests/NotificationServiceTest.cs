@@ -31,9 +31,9 @@ public class NotificationServiceTest : IDisposable
         _dbContext.Database.EnsureCreated();
 
         var notificationsRepository = new EfRepository<NotificationEntity>(_dbContext);
-        var unitOfWork = new EfUnitOfWork(_dbContext);
+        var unitOfWorkManager = new EfUnitOfWorkManager(_dbContext);
         _mockFakeService = new Mock<IFakeService>();
-        _notificationService = new NotificationService(notificationsRepository, _mockFakeService.Object, unitOfWork);
+        _notificationService = new NotificationService(notificationsRepository, _mockFakeService.Object, unitOfWorkManager);
 
     }
 

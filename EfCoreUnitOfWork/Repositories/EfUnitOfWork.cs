@@ -10,43 +10,43 @@ namespace EfCoreUnitOfWork.Repositories
     {
         private readonly DbContext _dbContext;
         private IDbContextTransaction? _currentTransaction;
-        private int countOfBeginCalls = 0;
+        private readonly bool _isParent;
+        private readonly IUnitOfWorkManager _unitOfWorkManager;
 
-        public EfUnitOfWork(DbContext dbContext)
+        public EfUnitOfWork(IUnitOfWorkManager unitOfWorkManager, DbContext dbContext, bool isParent = false)
         {
             _dbContext = dbContext;
-        }
-        public void Begin(IsolationLevel isolationLevel = IsolationLevel.ReadCommitted)
-        {
-            if (_dbContext.Database.CurrentTransaction == null)
-            {
+            _isParent = isParent;
+            _unitOfWorkManager = unitOfWorkManager;
+            
+            if(isParent && _dbContext.Database.CurrentTransaction == null)
                 _currentTransaction = _dbContext.Database.BeginTransaction();
-                countOfBeginCalls++;
-            }
+
         }
 
         public void Dispose()
         {
-            if(_currentTransaction != null)
+            try
             {
-                _currentTransaction.Rollback();
+                if (_isParent && _currentTransaction != null)
+                {
+                    _currentTransaction.Rollback();
+                }
+            }
+            finally
+            {
+                _unitOfWorkManager.EndOneUnitOfWork();
             }
         }
 
         public async Task EndAsync()
         {
-            if (countOfBeginCalls != 1)
-            {
-                countOfBeginCalls--;
+            if (!_isParent || _currentTransaction == null)
                 return;
-            }
-
-            countOfBeginCalls--;
 
             try
             {
-                if(_currentTransaction != null)
-                    await _currentTransaction.CommitAsync();
+                await _currentTransaction.CommitAsync();
             }
             catch
             {
