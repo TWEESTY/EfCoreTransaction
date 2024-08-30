@@ -9,12 +9,14 @@ namespace EfCoreUnitOfWork.Services
         private readonly IRepository<PersonEntity> _personRepository;
         private readonly INotificationService _notificationService;
         private readonly IFakeService _fakeService;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public PersonService(IRepository<PersonEntity> personRepository, INotificationService notificationService, IFakeService fakeService)
+        public PersonService(IRepository<PersonEntity> personRepository, INotificationService notificationService, IFakeService fakeService, IUnitOfWork unitOfWork)
         {
             _personRepository = personRepository;
             _notificationService = notificationService;
             _fakeService = fakeService;
+            _unitOfWork = unitOfWork;
         }
 
 
@@ -24,7 +26,7 @@ namespace EfCoreUnitOfWork.Services
 
             try
             {
-
+                _unitOfWork.Begin();
                 personEntity = _personRepository.Add(new PersonEntity { Name = name });
                 Result<NotificationEntity> notificationResult = await _notificationService.AddAsync("une notification", cancellationToken);
                 
@@ -36,6 +38,7 @@ namespace EfCoreUnitOfWork.Services
                 await _fakeService.DoWorkAsync();
 
                 await _personRepository.SaveChangesAsync();
+                await _unitOfWork.EndAsync();
             }
             catch (Exception ex)
             {
