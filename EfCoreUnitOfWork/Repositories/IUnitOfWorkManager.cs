@@ -3,7 +3,5 @@
     public interface IUnitOfWorkManager
     {
         IUnitOfWork StartOneUnitOfWork();
-
-        void EndOneUnitOfWork();
     }
 }

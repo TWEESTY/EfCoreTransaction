@@ -1,7 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using System.Data;
-using System.Data.Common;
 
 namespace EfCoreUnitOfWork.Repositories
 {
@@ -11,15 +9,15 @@ namespace EfCoreUnitOfWork.Repositories
         private readonly DbContext _dbContext;
         private IDbContextTransaction? _currentTransaction;
         private readonly bool _isParent;
-        private readonly IUnitOfWorkManager _unitOfWorkManager;
+        private readonly EfUnitOfWorkManager _unitOfWorkManager;
 
-        public EfUnitOfWork(IUnitOfWorkManager unitOfWorkManager, DbContext dbContext, bool isParent = false)
+        public EfUnitOfWork(EfUnitOfWorkManager unitOfWorkManager, DbContext dbContext, bool isParent = false)
         {
             _dbContext = dbContext;
             _isParent = isParent;
             _unitOfWorkManager = unitOfWorkManager;
-            
-            if(isParent && _dbContext.Database.CurrentTransaction == null)
+
+            if (isParent && _dbContext.Database.CurrentTransaction == null)
                 _currentTransaction = _dbContext.Database.BeginTransaction();
 
         }
