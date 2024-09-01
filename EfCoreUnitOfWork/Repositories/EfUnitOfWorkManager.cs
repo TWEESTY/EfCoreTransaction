@@ -5,11 +5,12 @@ namespace EfCoreUnitOfWork.Repositories
     public class EfUnitOfWorkManager : IUnitOfWorkManager
     {
         private int _numberOfUnitOfWork = 0;
-        private DbContext _dbContext;
+        private List<DbContext> _dbContexts;
 
-        public EfUnitOfWorkManager(DbContext dbContext)
+        public EfUnitOfWorkManager(List<DbContext> dbContexts)
         {
-            _dbContext = dbContext;
+            _dbContexts = dbContexts;
+
         }
 
         public void EndOneUnitOfWork()
@@ -19,7 +20,7 @@ namespace EfCoreUnitOfWork.Repositories
 
         public IUnitOfWork StartOneUnitOfWork()
         {
-            return new EfUnitOfWork(this, _dbContext, isParent: _numberOfUnitOfWork++ == 0);
+            return new EfUnitOfWork(this, _dbContexts, isParent: _numberOfUnitOfWork++ == 0);
         }
     }
 }

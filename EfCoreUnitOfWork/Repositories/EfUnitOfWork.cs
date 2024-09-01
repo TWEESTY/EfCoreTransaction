@@ -6,19 +6,27 @@ namespace EfCoreUnitOfWork.Repositories
     // NOT THREAD SAFE LIKE DBCONTEXT
     public class EfUnitOfWork : IUnitOfWork
     {
-        private readonly DbContext _dbContext;
+        private readonly List<DbContext> _dbContexts;
         private IDbContextTransaction? _currentTransaction;
         private readonly bool _isParent;
         private readonly EfUnitOfWorkManager _unitOfWorkManager;
 
-        public EfUnitOfWork(EfUnitOfWorkManager unitOfWorkManager, DbContext dbContext, bool isParent = false)
+        public EfUnitOfWork(EfUnitOfWorkManager unitOfWorkManager, List<DbContext> dbContexts, bool isParent = false)
         {
-            _dbContext = dbContext;
+            _dbContexts = dbContexts;
             _isParent = isParent;
             _unitOfWorkManager = unitOfWorkManager;
 
-            if (isParent && _dbContext.Database.CurrentTransaction == null)
-                _currentTransaction = _dbContext.Database.BeginTransaction();
+            if (isParent && _dbContexts.First().Database.CurrentTransaction == null)
+            {
+                foreach (DbContext dbContext in dbContexts)
+                {
+                    if (_currentTransaction is null)
+                        _currentTransaction = dbContext.Database.BeginTransaction();
+                    else
+                        dbContext.Database.UseTransaction(_currentTransaction.GetDbTransaction());
+                }
+            }
 
         }
 
@@ -29,7 +37,7 @@ namespace EfCoreUnitOfWork.Repositories
                 if (_isParent && _currentTransaction != null)
                 {
                     _currentTransaction.Rollback();
-                    _dbContext.ChangeTracker.Clear();
+                    _dbContexts.ForEach(context => context.ChangeTracker.Clear());
                 }
             }
             finally
@@ -51,7 +59,7 @@ namespace EfCoreUnitOfWork.Repositories
             {
                 // TODO logging
                 _currentTransaction?.Rollback();
-                _dbContext.ChangeTracker.Clear();
+                _dbContexts.ForEach(context => context.ChangeTracker.Clear());
                 throw;
             }
             finally

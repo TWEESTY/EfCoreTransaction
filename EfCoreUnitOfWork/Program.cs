@@ -12,7 +12,7 @@ builder.Services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IFakeService, FakeService>();
-builder.Services.AddScoped<IUnitOfWorkManager>(provider => new EfUnitOfWorkManager(provider.GetRequiredService<AppDbContext>()));
+builder.Services.AddScoped<IUnitOfWorkManager>(provider => new EfUnitOfWorkManager(new List<DbContext> { provider.GetRequiredService<AppDbContext>() }));
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
