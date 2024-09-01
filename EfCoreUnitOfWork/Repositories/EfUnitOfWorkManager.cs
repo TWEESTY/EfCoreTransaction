@@ -12,14 +12,27 @@ namespace EfCoreUnitOfWork.Repositories
             _dbContext = dbContext;
         }
 
-        public void EndOneUnitOfWork()
+
+        public Task EndUnitOfWorkAsync(IUnitOfWork unitOfWork, bool forceRollback = false)
         {
             _numberOfUnitOfWork--;
+            return unitOfWork.EndAsync(forceRollback);
         }
 
-        public IUnitOfWork StartOneUnitOfWork()
+        public async Task<IUnitOfWork> StartOneUnitOfWorkAsync()
         {
-            return new EfUnitOfWork(this, _dbContext, isParent: _numberOfUnitOfWork++ == 0);
+            IUnitOfWork unitOfWork = new EfUnitOfWork(this, _dbContext, isParent: _numberOfUnitOfWork++ == 0);
+
+            try
+            {
+                await unitOfWork.StartAsync();
+                return unitOfWork;
+            }
+            catch
+            {
+                await unitOfWork.DisposeAsync();
+                throw;
+            }
         }
     }
 }

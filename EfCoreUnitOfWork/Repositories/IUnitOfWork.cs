@@ -1,11 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
-using System.Data;
-using System.Data.Common;
-
-namespace EfCoreUnitOfWork.Repositories
+﻿namespace EfCoreUnitOfWork.Repositories
 {
-    public interface IUnitOfWork : IDisposable
+    public interface IUnitOfWork : IAsyncDisposable
     {
-        public Task EndAsync();
+        public Task StartAsync();
+        public Task EndAsync(bool forceRollback = false);
     }
 }

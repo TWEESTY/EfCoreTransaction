@@ -2,6 +2,8 @@
 {
     public interface IUnitOfWorkManager
     {
-        IUnitOfWork StartOneUnitOfWork();
+        Task<IUnitOfWork> StartOneUnitOfWorkAsync();
+
+        Task EndUnitOfWorkAsync(IUnitOfWork unitOfWork, bool forceRollback = false);
     }
 }

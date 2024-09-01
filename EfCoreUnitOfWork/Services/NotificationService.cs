@@ -23,13 +23,13 @@ namespace EfCoreUnitOfWork.Services
             NotificationEntity notificationEntity;
             try
             {
-                using (IUnitOfWork unitOfWork = _unitOfWorkManager.StartOneUnitOfWork())
+                await using (IUnitOfWork unitOfWork = await _unitOfWorkManager.StartOneUnitOfWorkAsync())
                 {
                     notificationEntity = _notificationRepository.Add(new NotificationEntity { Text = text });
                     await _fakeService.DoWorkAsync();
                     await _notificationRepository.SaveChangesAsync(cancellationToken);
 
-                    await unitOfWork.EndAsync();
+                    await _unitOfWorkManager.EndUnitOfWorkAsync(unitOfWork);
                 }
             }
             catch (Exception ex)
