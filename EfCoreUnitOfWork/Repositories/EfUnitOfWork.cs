@@ -39,6 +39,7 @@ namespace EfCoreUnitOfWork.Repositories
             {
                 await _currentTransaction.RollbackAsync();
                 _dbContext.ChangeTracker.Clear();
+                _currentTransaction.Dispose();
             }
         }
 
@@ -60,6 +61,7 @@ namespace EfCoreUnitOfWork.Repositories
             }
             finally
             {
+                _currentTransaction.Dispose();
                 _currentTransaction = null;
             }
         }
@@ -69,6 +71,8 @@ namespace EfCoreUnitOfWork.Repositories
             if (_currentTransaction is not null)
                 await _unitOfWorkManager.EndUnitOfWorkAsync(this, forceRollback: true);
 
+            _currentTransaction?.Dispose();
+            
             // Suppress finalization.
             GC.SuppressFinalize(this);
         }
